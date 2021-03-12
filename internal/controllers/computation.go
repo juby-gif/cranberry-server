@@ -44,15 +44,14 @@ func (c *Controller) getCalc(w http.ResponseWriter, r *http.Request) {
 		numberArr = cachedNumberArr.([]float64)
 	}
 
-	go calcSum(numberArr, chan1)
-	go calcAvg(numberArr, chan2)
-	sum := <-chan1
-	avg := <-chan2
+	go calcSumRoutine(numberArr, chan1)
+	go calcAvgRoutine(numberArr, chan2)
+	sumCh, avgCh := <-chan1, <-chan2
 	count := len(numberArr)
 
 	var responseData = &models.CalcResponse{
-		Sum:     sum,
-		Average: avg,
+		Sum:     sumCh,
+		Average: avgCh,
 		Count:   count,
 	}
 	err := json.NewEncoder(w).Encode(&responseData)
@@ -62,16 +61,16 @@ func (c *Controller) getCalc(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func calcSum(numberArr []float64, chan1 chan float64) {
+func calcSumRoutine(numberArr []float64, chan1 chan float64) {
 	var sum float64
 	for _, v := range numberArr {
 		sum += v
 	}
 	chan1 <- sum
 }
-func calcAvg(numberArr []float64, chan2 chan float64) {
+func calcAvgRoutine(numberArr []float64, chan2 chan float64) {
 	chan1 := make(chan float64)
-	go calcSum(numberArr, chan1)
+	go calcSumRoutine(numberArr, chan1)
 	sum := <-chan1
 	avg := sum / float64(len(numberArr))
 	chan2 <- avg
